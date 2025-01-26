@@ -2,10 +2,6 @@ import numpy as np
 import pandas as pd
 import os
 from datetime import datetime
-import numpy as np
-import pandas as pd
-import os
-from datetime import datetime
 
 
 def categorize_transaction(row):
@@ -114,9 +110,13 @@ def analyze_transactions(month, input_dir='statements', output_dir='statements')
         print(f"Analysis completed for {month}")
         return df
     
+    except FileNotFoundError:
+        print(f"Error: File not found for {month}. Skipping.")
+    except ValueError as ve:
+        print(f"Error: {ve}")
     except Exception as e:
-        print(f"Error processing {month}: {e}")
-        return None
+        print(f"Unexpected error processing {month}: {e}")
+    return None
 
 def format_inr(amount):
     """Format amount in Indian Rupee format"""
