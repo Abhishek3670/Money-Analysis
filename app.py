@@ -2,7 +2,12 @@ import numpy as np
 import pandas as pd
 import os
 from datetime import datetime
+import logging
+from visualization import visualize_transactions, extract_insights
 
+# Configure logging
+logging.basicConfig(filename='transaction_analysis.log', level=logging.INFO, 
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 
 def categorize_transaction(row):
     """Categorize transaction based on ICICI Bank transaction codes and remarks."""
@@ -57,6 +62,7 @@ def analyze_transactions_for_all_months(months, input_dir='statements', output_d
         month_folder = os.path.join(input_dir, month)
         if not os.path.exists(month_folder):
             print(f"Warning: Folder for {month} not found. Skipping.")
+            logging.warning(f"Folder for {month} not found. Skipping.")
             continue
         
         result = analyze_transactions(month, input_dir, output_dir)
@@ -68,6 +74,7 @@ def analyze_transactions_for_all_months(months, input_dir='statements', output_d
         all_data_file = os.path.join(output_dir, 'all_months_transaction_analysis.xlsx')
         all_data.to_excel(all_data_file, index=False)
         print(f"All months combined analysis saved to: {all_data_file}")
+        logging.info(f"All months combined analysis saved to: {all_data_file}")
     
     return all_monthly_data
 
@@ -87,10 +94,20 @@ def analyze_transactions(month, input_dir='statements', output_dir='statements')
         if missing_columns:
             raise ValueError(f"Missing required columns: {missing_columns}")
         
+        # Remove rows with all null values
+        initial_row_count = len(df)
+        df.dropna(how='all', inplace=True)
+        removed_rows = initial_row_count - len(df)
+        if removed_rows > 0:
+            logging.info(f"Removed {removed_rows} rows with all null values in {month}")
+        
         df['Transaction Date'] = pd.to_datetime(df['Transaction Date'], dayfirst=True, errors='coerce')
         if df['Transaction Date'].isna().any():
-            print(f"Warning: Invalid dates found in {month}")
-
+            invalid_dates = df[df['Transaction Date'].isna()]
+            print(f"Warning: Invalid dates found in {month}. Rows with invalid dates:")
+            print(invalid_dates)
+            logging.warning(f"Invalid dates found in {month}. Rows with invalid dates: {invalid_dates}")
+        
         df['Transaction Type'] = df.apply(determine_transaction_type, axis=1)
         df['Transaction Category'] = df.apply(categorize_transaction, axis=1)
         df['Transaction Insights'] = df.apply(generate_transaction_insights, axis=1)
@@ -107,15 +124,24 @@ def analyze_transactions(month, input_dir='statements', output_dir='statements')
             df.to_excel(writer, sheet_name='Detailed Transactions', index=False)
             create_summary_sheets(df, writer)
         
+        # Generate visualizations and insights
+        month_output_dir = os.path.join(output_dir, month)
+        visualize_transactions(df, month_output_dir, month)
+        extract_insights(df, month_output_dir)
+        
         print(f"Analysis completed for {month}")
+        logging.info(f"Analysis completed for {month}")
         return df
     
     except FileNotFoundError:
         print(f"Error: File not found for {month}. Skipping.")
+        logging.error(f"File not found for {month}. Skipping.")
     except ValueError as ve:
         print(f"Error: {ve}")
+        logging.error(f"Error: {ve}")
     except Exception as e:
         print(f"Unexpected error processing {month}: {e}")
+        logging.error(f"Unexpected error processing {month}: {e}")
     return None
 
 def format_inr(amount):
