@@ -4,6 +4,7 @@ import os
 from datetime import datetime
 import logging
 from visualization import visualize_transactions, extract_insights
+from report_generation import generate_monthly_report, generate_yearly_report
 
 # Configure logging
 logging.basicConfig(filename='transaction_analysis.log', level=logging.INFO, 
@@ -75,6 +76,9 @@ def analyze_transactions_for_all_months(months, input_dir='statements', output_d
         all_data.to_excel(all_data_file, index=False)
         print(f"All months combined analysis saved to: {all_data_file}")
         logging.info(f"All months combined analysis saved to: {all_data_file}")
+        
+        # Generate yearly report
+        generate_yearly_report(all_monthly_data, output_dir)
     
     return all_monthly_data
 
@@ -128,6 +132,9 @@ def analyze_transactions(month, input_dir='statements', output_dir='statements')
         month_output_dir = os.path.join(output_dir, month)
         visualize_transactions(df, month_output_dir, month)
         extract_insights(df, month_output_dir)
+        
+        # Generate monthly report
+        generate_monthly_report(df, month_output_dir, month)
         
         print(f"Analysis completed for {month}")
         logging.info(f"Analysis completed for {month}")
